@@ -1,10 +1,14 @@
 # vite-plugin-vue2
 
-## Usage
+[![NPM version](https://img.shields.io/npm/v/vite-plugin-vue2?color=a1b858&label=)](https://www.npmjs.com/package/vite-plugin-vue2)
 
-- run `yarn add vite-plugin-vue2 --dev`
-- add the plugin into `vite.config.js`
-``` js
+## Install
+
+```bash
+npm install vite-plugin-vue2 -D
+```
+
+```js
 // vite.config.js
 const { createVuePlugin } = require('vite-plugin-vue2')
 
@@ -15,11 +19,6 @@ module.exports = {
 
 ## [Options](https://github.com/underfin/vite-plugin-vue2/blob/master/src/index.ts#L26)
 
-### `vueTemplateCompiler`
-
-Type: `Object`<br>
-
-You can custom `vue-template-compiler` version or other compiler.
 ### `vueTemplateOptions`
 
 Type: `Object`<br>

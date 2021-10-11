@@ -1,4 +1,4 @@
-import { TemplateCompileOptions } from '@vue/component-compiler-utils/lib/compileTemplate'
+import { TemplateCompileOptions } from '@vue/component-compiler-utils'
 import { normalizeComponentCode } from './utils/componentNormalizer'
 import { vueHotReloadCode } from './utils/vueHotReload'
 import fs from 'fs'
@@ -12,7 +12,6 @@ import { ViteDevServer, Plugin } from 'vite'
 import { SFCBlock } from '@vue/component-compiler-utils'
 import { handleHotUpdate } from './hmr'
 import { transformVueJsx } from './jsxTransform'
-import { VueTemplateCompiler } from './template/types'
 
 export const vueComponentNormalizer = '\0/vite/vueComponentNormalizer'
 export const vueHotReload = '\0/vite/vueHotReload'
@@ -27,10 +26,6 @@ declare module '@vue/component-compiler-utils' {
 export interface VueViteOptions {
   include?: string | RegExp | (string | RegExp)[]
   exclude?: string | RegExp | (string | RegExp)[]
-  /**
-   * Custom vue template compiler.
-   */
-  vueTemplateCompiler?: VueTemplateCompiler
   /**
    * The options for `@vue/component-compiler-utils`.
    */
@@ -153,7 +148,7 @@ export function createVuePlugin(rawOptions: VueViteOptions = {}): Plugin {
         return await transformMain(code, filename, options, this)
       }
 
-      const descriptor = getDescriptor(filename)!
+      const descriptor = getDescriptor(query.from || filename)!
       // sub block request
       if (query.type === 'template') {
         return compileSFCTemplate(

@@ -2,7 +2,7 @@ import { SFCBlock, SFCDescriptor } from '@vue/component-compiler-utils'
 import { rewriteDefault } from './utils/rewriteDefault'
 import { vueHotReload, vueComponentNormalizer, ResolvedOptions } from './index'
 import qs from 'querystring'
-import { createDescriptor, setDescriptor } from './utils/descriptorCache'
+import { createDescriptor } from './utils/descriptorCache'
 import path from 'path'
 import fs from 'fs'
 import { TransformPluginContext } from 'rollup'
@@ -50,7 +50,7 @@ const ${cssModuleVar} = {}
 ${stylesCode}
 /* normalize component */
 import normalizer from "${vueComponentNormalizer}"
-var component = normalizer(
+var __component__ = /*#__PURE__*/normalizer(
   script,
   render,
   staticRenderFns,
@@ -72,17 +72,17 @@ function injectStyles (context) {
   // custom block
   result += await genCustomBlockCode(filePath, descriptor, pluginContext)
   // Expose filename. This is used by the devtools and Vue runtime warnings.
-  if (options.isProduction) {
+  if (!options.isProduction) {
     // Expose the file's full path in development, so that it can be opened
     // from the devtools.
-    result += `\ncomponent.options.__file = ${JSON.stringify(
+    result += `\n__component__.options.__file = ${JSON.stringify(
       path.relative(options.root, filePath).replace(/\\/g, '/')
     )}`
   }
   // else if (options.exposeFilename) {
   // 	// Libraries can opt-in to expose their components' filenames in production builds.
   // 	// For security reasons, only expose the file's basename in production.
-  // 	code += `\ncomponent.options.__file = ${JSON.stringify(filePath)}`
+  // 	code += `\n__component__.options.__file = ${JSON.stringify(filePath)}`
   // }
 
   if (options.devServer && !options.isProduction) {
@@ -106,7 +106,7 @@ function injectStyles (context) {
     map = JSON.parse(emptyMapGen.toString())
   }
 
-  result += `\nexport default component.exports`
+  result += `\nexport default /*#__PURE__*/(function () { return __component__.exports })()`
   return {
     code: result,
     map,
@@ -159,19 +159,12 @@ async function genScriptCode(
         map = result.map
       }
     } else {
-      if (script.src) {
-        await linkSrcToDescriptor(
-          script.src,
-          filename,
-          descriptor,
-          pluginContext
-        )
-      }
       const src = script.src || filename
       const langFallback = (script.src && path.extname(src).slice(1)) || 'js'
       const attrsQuery = attrsToQuery(script.attrs, langFallback)
       const srcQuery = script.src ? `&src` : ``
-      const query = `?vue&type=script${srcQuery}${attrsQuery}`
+      const from = script.src ? `&from=${filename}` : ''
+      const query = `?vue&type=script${srcQuery}${from}${attrsQuery}`
       const request = JSON.stringify(src + query)
       scriptCode =
         `import ${scriptVar} from ${request}\n` + `export * from ${request}` // support named exports
@@ -192,13 +185,11 @@ async function genTemplateRequest(
   if (!template) {
     return { code: `let render, staticRenderFns` }
   }
-  if (template.src) {
-    await linkSrcToDescriptor(template.src, filename, descriptor, pluginContext)
-  }
   const src = template.src || filename
   const srcQuery = template.src ? `&src` : ``
+  const from = template.src ? `&from=${filename}` : ''
   const attrsQuery = attrsToQuery(template.attrs, 'js', true)
-  const query = `?vue&type=template${srcQuery}${attrsQuery}`
+  const query = `?vue${from}&type=template${srcQuery}${attrsQuery}`
   const templateRequest = src + query
   return {
     code: `import { render, staticRenderFns } from '${templateRequest}'`,
@@ -216,19 +207,17 @@ async function genCustomBlockCode(
     descriptor.customBlocks.map(async (block, index) => {
       const blockSrc =
         typeof block.attrs.src === 'string' ? block.attrs.src : ''
-      if (blockSrc) {
-        await linkSrcToDescriptor(blockSrc, filename, descriptor, pluginContext)
-      }
       const src = blockSrc || filename
       const attrsQuery = attrsToQuery(
         block.attrs,
         path.extname(blockSrc) || block.type
       )
       const srcQuery = block.attrs.src ? `&src` : ``
-      const query = `?vue&type=${block.type}&index=${index}${srcQuery}${attrsQuery}`
+      const from = block.attrs.src ? `&from=${filename}` : ''
+      const query = `?vue&type=${block.type}&index=${index}${srcQuery}${from}${attrsQuery}`
       const request = JSON.stringify(src + query)
       code += `import block${index} from ${request}\n`
-      code += `if (typeof block${index} === 'function') block${index}(component)\n`
+      code += `if (typeof block${index} === 'function') block${index}(__component__)\n`
     })
   )
   return code
@@ -246,7 +235,7 @@ import vue from "vue"
 __VUE_HMR_RUNTIME__.install(vue)
 if(__VUE_HMR_RUNTIME__.compatible){
   if (!__VUE_HMR_RUNTIME__.isRecorded('${id}')) {
-    __VUE_HMR_RUNTIME__.createRecord('${id}', component.options)
+    __VUE_HMR_RUNTIME__.createRecord('${id}', __component__.options)
   }
    import.meta.hot.accept((update) => {
       __VUE_HMR_RUNTIME__.${
@@ -278,13 +267,11 @@ async function genStyleRequest(
   let stylesCode = ''
   for (let i = 0; i < descriptor.styles.length; i++) {
     const style = descriptor.styles[i]
-    if (style.src) {
-      await linkSrcToDescriptor(style.src, filename, descriptor, pluginContext)
-    }
     const src = style.src || filename
     const attrsQuery = attrsToQuery(style.attrs, 'css')
     const srcQuery = style.src ? `&src` : ``
-    const query = `?vue&type=style&index=${i}${srcQuery}`
+    const from = style.src ? `&from=${filename}` : ''
+    const query = `?vue&type=style&index=${i}${from}${srcQuery}`
     const styleRequest = src + query + attrsQuery
     if (style.scoped) scoped = true
     if (style.module) {
@@ -316,21 +303,6 @@ function genCSSModulesCode(
     `\nimport ${styleVar} from ${JSON.stringify(moduleRequest)}` +
     `\n${cssModuleVar}["${exposedName}"] = ${styleVar}`
   )
-}
-
-/**
- * For blocks with src imports, it is important to link the imported file
- * with its owner SFC descriptor so that we can get the information about
- * the owner SFC when compiling that file in the transform phase.
- */
-async function linkSrcToDescriptor(
-  src: string,
-  filename: string,
-  descriptor: SFCDescriptor,
-  pluginContext: TransformPluginContext
-) {
-  const srcFile = (await pluginContext.resolve(src, filename))?.id || src
-  setDescriptor(srcFile, descriptor)
 }
 
 // these are built-in query parameters so should be ignored

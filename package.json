@@ -1,14 +1,15 @@
 {
   "name": "vite-plugin-vue2",
-  "version": "1.6.2",
+  "version": "1.8.2",
   "description": "Vite plugin for Vue2",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsc -w -p . --incremental --skipLibCheck",
     "test": "jest --clearCache && jest --runInBand --forceExit",
     "build": "rm -rf dist && tsc -p . --skipLibCheck",
+    "release": "bumpp -x 'yarn changelog' --all --push --commit --tag && yarn publish --non-interactive",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
-    "prepublishOnly": "yarn build && yarn changelog"
+    "prepublishOnly": "yarn build"
   },
   "files": [
     "dist"
@@ -41,6 +42,8 @@
   "dependencies": {
     "@babel/core": "^7.11.6",
     "@babel/parser": "^7.13.10",
+    "@babel/plugin-proposal-class-properties": "^7.14.5",
+    "@babel/plugin-proposal-decorators": "^7.14.5",
     "@babel/plugin-transform-typescript": "^7.13.0",
     "@rollup/pluginutils": "^4.1.0",
     "@vue/babel-helper-vue-jsx-merge-props": "^1.2.1",
@@ -57,11 +60,11 @@
     "rollup": "^2.35.1",
     "slash": "^3.0.0",
     "source-map": "^0.7.3",
-    "vue-template-es2015-compiler": "^1.9.1",
-    "vue-template-compiler": "^2.2.0"
+    "vue-template-es2015-compiler": "^1.9.1"
   },
   "peerDependencies": {
-    "vite": "^2.0.0-beta.23"
+    "vite": "^2.0.0-beta.23",
+    "vue-template-compiler": "^2.2.0"
   },
   "devDependencies": {
     "@types/consolidate": "^0.14.0",
@@ -71,6 +74,7 @@
     "@types/jest": "^26.0.4",
     "@types/node": "^14.0.14",
     "@types/puppeteer": "^3.0.1",
+    "bumpp": "^7.1.1",
     "conventional-changelog-cli": "^2.0.34",
     "execa": "^4.0.2",
     "jest": "^26.1.0",
