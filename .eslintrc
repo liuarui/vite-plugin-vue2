@@ -1,0 +1,14 @@
+{
+  "extends": "@antfu",
+  "rules": {
+    "react/no-unknown-property": "off",
+  },
+  "overrides": [
+    {
+      "files": "test/**/*.*",
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

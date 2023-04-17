@@ -5,3 +5,5 @@ dist
 yarn-error.log
 .idea/
 .history/
+.vscode
+temp
